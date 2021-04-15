@@ -6,7 +6,7 @@ data:
   datadir: /data/namrata/celebA/img_align_celeba
   captions: data/celeba/captions.txt
   word_vectors: data/celeba/celeba.vec
-  sample_size: 10000
+  sample_size: null
   batch_size: 128
   num_workers: 8
 
