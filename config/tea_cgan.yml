@@ -6,7 +6,7 @@ data:
   datadir: /data/namrata/celebA/img_align_celeba
   captions: data/celeba/captions.txt
   word_vectors: data/celeba/celeba.vec
-  sample_size: 1000
+  sample_size: 10000
   batch_size: 128
   num_workers: 8
 
@@ -15,8 +15,8 @@ model:
     - train
 
   epochs: 600
-  gamma1: 10
-  gamma2: 2
+  gamma1: 1
+  gamma2: 1
 
   optimizer:
     generator:

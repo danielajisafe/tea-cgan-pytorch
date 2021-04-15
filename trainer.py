@@ -71,6 +71,10 @@ class TEACGANTrainer(object):
         data_iter, tqdm_iter = self._get_iterator()
 
         metrics = defaultdict(list)
+        N = self.data_cfg.batch_size
+        ones = torch.ones((N)).to(self.device)
+        zeros = torch.zeros((N)).to(self.device)
+
         for i in tqdm_iter:
             batch = next(data_iter)
             batch = dict2device(batch, self.device)
@@ -79,25 +83,36 @@ class TEACGANTrainer(object):
             g_I_T_hat, T_hat = self.model(batch['image'], batch['mismatch'])
 
             gen_loss = 0
-            gen_loss += torch.log(self.D(batch['image'])).mean()
-            gen_loss += self.model_cfg.gamma1 * torch.log(self.D(g_I_T_hat, T_hat)[0]).mean()
+            gen_loss += F.mse_loss(self.D(g_I_T), ones)
+            gen_loss += F.mse_loss(self.D(g_I_T_hat, T_hat)[0], ones)
             gen_loss += self.model_cfg.gamma2 * F.l1_loss(g_I_T, batch['image']) #recon_loss
 
-            disc_obj = 0
-            disc_obj += torch.log(self.D(batch['image'])).mean()
-            disc_obj += torch.log(1 - self.D(g_I_T.detach())).mean()
-            disc_obj += self.model_cfg.gamma1 * torch.log(self.D(batch['image'], T.detach())[0]).mean()
-            disc_obj += self.model_cfg.gamma1 * torch.log(1 - self.D(g_I_T_hat.detach(), T_hat.detach())[0]).mean()
+            disc_loss = 0
+            disc_loss += F.mse_loss(self.D(batch['image']), ones)
+            disc_loss += F.mse_loss(self.D(g_I_T.detach()), zeros)
+            disc_loss += self.model_cfg.gamma1 * F.mse_loss(self.D(batch['image'], T.detach())[0], ones)
+            disc_loss += self.model_cfg.gamma1 * F.mse_loss(self.D(g_I_T_hat.detach(), T_hat.detach())[0], zeros)
+
+            # gen_loss = 0
+            # gen_loss += torch.log(self.D(batch['image'])).mean()
+            # gen_loss += self.model_cfg.gamma1 * torch.log(self.D(g_I_T_hat, T_hat)[0]).mean()
+            # gen_loss += self.model_cfg.gamma2 * F.mse_loss(g_I_T, batch['image']) #recon_loss
+
+            # disc_obj = 0
+            # disc_obj += torch.log(self.D(batch['image'])).mean()
+            # disc_obj += torch.log(1 - self.D(g_I_T.detach())).mean()
+            # disc_obj += self.model_cfg.gamma1 * torch.log(self.D(batch['image'], T.detach())[0]).mean()
+            # disc_obj += self.model_cfg.gamma1 * torch.log(1 - self.D(g_I_T_hat.detach(), T_hat.detach())[0]).mean()
 
             if train:
                 self._backprop(gen_loss, self.gen_opt)
-                self._backprop(-disc_obj, self.disc_opt)
+                self._backprop(disc_loss, self.disc_opt)
 
             tqdm_iter.set_description("{} | Epoch {} | {} | loss:{:.4f}".format(self.exp_cfg.version, epochID, mode, gen_loss.item()))
 
             if self.exp_cfg.wandb:
                 metrics['gen_loss'].append(gen_loss.item())
-                metrics['disc_obj'].append(disc_obj.item())
+                metrics['disc_loss'].append(disc_loss.item())
 
                 if i == 0:
                     log_images(epochID, mode, batch['image'][self.vis_idx], g_I_T[self.vis_idx], name='reconstruction')
