@@ -11,12 +11,12 @@ from torchvision import transforms as T
 
 
 class CelebA(Dataset):
-	def __init__(self, datadir, captions, word_vectors, transform):
+	def __init__(self, datadir, captions, word_vectors, transform, sample_size=None):
 		self.captions = pd.read_csv(captions, delimiter='\t', header=None, index_col=0).to_dict()[1]
 		nan_keys = [key for key in self.captions if isinstance(self.captions[key], float)]
 		for key in nan_keys:
 			del self.captions[key]
-		self.fnames = [os.path.join(datadir, fname) for fname in self.captions]
+		self.fnames = [os.path.join(datadir, fname) for fname in self.captions][:sample_size]
 		self.word_vectors = pd.read_csv(word_vectors, header=None, delimiter=' ', skiprows=1, index_col=0)
 		self.word_vectors.drop(columns=101, inplace=True)
 		self.transform = transform
