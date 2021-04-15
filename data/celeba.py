@@ -5,14 +5,18 @@ import numpy as np
 from PIL import Image
 
 import torch
+import math
 from torch.utils.data import Dataset
 from torchvision import transforms as T
 
 
 class CelebA(Dataset):
 	def __init__(self, datadir, captions, word_vectors, transform):
-		self.fnames = glob.glob(os.path.join(datadir, '*.jpg'))
 		self.captions = pd.read_csv(captions, delimiter='\t', header=None, index_col=0).to_dict()[1]
+		nan_keys = [key for key in self.captions if isinstance(self.captions[key], float)]
+		for key in nan_keys:
+			del self.captions[key]
+		self.fnames = [os.path.join(datadir, fname) for fname in self.captions]
 		self.word_vectors = pd.read_csv(word_vectors, header=None, delimiter=' ', skiprows=1, index_col=0)
 		self.word_vectors.drop(columns=101, inplace=True)
 		self.transform = transform
@@ -59,4 +63,6 @@ if __name__=='__main__':
 	transform.append(T.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)))
 	transform = T.Compose(transform)
 	dataset = CelebA('/data/namrata/celebA/img_align_celeba', './celeba/captions.txt', './celeba/celeba.vec', transform)
-	print(dataset[0])
+	from tqdm import tqdm
+	for i in tqdm(range(len(dataset))):
+		dataset[i]
