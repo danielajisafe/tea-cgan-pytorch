@@ -34,10 +34,16 @@ class TEACGANTrainer(object):
                            list(self.model.res_block1.parameters()) + \
                            list(self.model.res_block2.parameters())
 
-        # disc_params = list(self.model.discriminator.parameters())
-
         gen_opt_cfg = self.model_cfg.optimizer['generator']
         self.gen_opt = eval("torch.optim.{}(gen_params, **{})".format([*gen_opt_cfg.keys()][0], [*gen_opt_cfg.values()][0]))
+
+        disc_params = list(self.model.discriminator.parameters()) + \
+                      list(self.model.joint_conv.parameters()) + \
+                      list(self.model.logit_conv.parameters()) + \
+                      list(self.model.uncond_logit_conv.parameters())
+                      
+        disc_opt_cfg = self.model_cfg.optimizer['discriminator']
+        self.disc_opt = eval("torch.optim.{}(disc_params, **{})".format([*disc_opt_cfg.keys()][0], [*disc_opt_cfg.values()][0]))
 
     def _backprop(self, loss, opt):
         opt.zero_grad()
@@ -63,9 +69,11 @@ class TEACGANTrainer(object):
             batch = next(data_iter)
             batch = dict2device(batch, self.device)
 
-            image_hat = self.model(batch['image'], batch['caption'])
-
+            image_hat, caption_ft = self.model(batch['image'], batch['caption'])
             recon_loss = F.l1_loss(image_hat, batch['image'])
+
+            # TODO
+            # self.model.discriminator_forward(image_hat, caption_ft)
             gen_loss = recon_loss
 
             if train:

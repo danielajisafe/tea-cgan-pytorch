@@ -25,6 +25,11 @@ class TEACGAN(nn.Module):
         self.res_block1 = Network(self.cfg.network['res_block1'])
         self.res_block2 = Network(self.cfg.network['res_block2'])
 
+        self.discriminator = Network(self.cfg.network['discriminator'])
+        self.joint_conv = Network(self.cfg.network['joint_conv'])
+        self.logit_conv = Network(self.cfg.network['logit_conv'])
+        self.uncond_logit_conv = Network(self.cfg.network['logit_conv'])
+
     def forward(self, image, caption):
         # encode image
         img_ft = self.image_encoder(image)
@@ -54,5 +59,24 @@ class TEACGAN(nn.Module):
         # decode image
         image_hat = self.image_decoder(res2)
 
-        return image_hat
+        return image_hat, caption_ft
+
+    def discriminator_forward(self, image, caption_ft=None):
+        image_ft = self.discriminator(image)
+
+        if caption_ft is not None:
+            N = image_ft.shape[0]
+            caption_ft = caption_ft.reshape(N, -1, image_ft.shape[-2], image_ft.shape[-1])
+            joint_ft = torch.cat([image_ft, caption_ft], dim=1)
+            x = self.joint_conv(joint_ft)
+        else:
+            x = image_ft
+
+        logit = self.logit_conv(x)
+
+        if caption_ft is not None:
+            uncond_logit = self.uncond_logit_conv(image_ft)
+            return [logit.view(-1), uncond_logit.view(-1)]
+
+        return logit.view(-1)
 
