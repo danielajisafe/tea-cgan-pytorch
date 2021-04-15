@@ -4,16 +4,29 @@ import pandas as pd
 import numpy as np
 from PIL import Image
 
+import torch
 from torch.utils.data import Dataset
 from torchvision import transforms as T
 
 
 class CelebA(Dataset):
-	def __init__(self, datadir, captions, transform):
+	def __init__(self, datadir, captions, word_vectors, transform):
 		self.fnames = glob.glob(os.path.join(datadir, '*.jpg'))
 		self.captions = pd.read_csv(captions, delimiter='\t', header=None, index_col=0).to_dict()[1]
+		self.word_vectors = pd.read_csv(word_vectors, header=None, delimiter=' ', skiprows=1, index_col=0)
+		self.word_vectors.drop(columns=101, inplace=True)
 		self.transform = transform
+		self.max_len = max([len(str(x).split()) for x in [*self.captions.values()]])
 
+	def word2vec(self, sentence):
+		words = sentence.split()
+		sentence_vec = np.zeros((self.max_len, 100))
+		for i, word in enumerate(words):
+			vec = np.array(self.word_vectors.loc[str(word)])
+			sentence_vec[i] = vec
+
+		return torch.FloatTensor(sentence_vec)
+		
 	def __len__(self):
 		return len(self.fnames)
 
@@ -24,15 +37,19 @@ class CelebA(Dataset):
 		
 		key = os.path.basename(fname)
 		caption = self.captions[key]
+		caption_vec = self.word2vec(caption)
 
 		alt = index
 		while alt == index:
 			alt = np.random.randint(self.__len__())
 		mismatch = self.captions[os.path.basename(self.fnames[alt])]
+		mismatch_vec = self.word2vec(mismatch)
 
 		return {'image': image,
-				'caption': caption,
-				'mismatch': mismatch}
+				'caption_txt': caption,
+				'caption': caption_vec,
+				'mismatch_txt': mismatch,
+				'mismatch': mismatch_vec}
 
 
 if __name__=='__main__':
@@ -41,5 +58,5 @@ if __name__=='__main__':
 	transform.append(T.ToTensor())
 	transform.append(T.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)))
 	transform = T.Compose(transform)
-	dataset = CelebA('/data/namrata/celebA/img_align_celeba', './celeba/captions.txt', transform)
-	dataset[0]
+	dataset = CelebA('/data/namrata/celebA/img_align_celeba', './celeba/captions.txt', './celeba/celeba.vec', transform)
+	print(dataset[0])
