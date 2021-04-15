@@ -14,6 +14,9 @@ model:
     - train
 
   epochs: 600
+  gamma1: 10
+  gamma2: 2
+
   optimizer:
     generator:
       Adam:
