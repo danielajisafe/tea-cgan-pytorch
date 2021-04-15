@@ -1,0 +1,30 @@
+experiment:
+  description: tea-cgan on celeba
+  output_loc: /data/namrata/models/tea-cgan/
+
+data:
+  datadir: /data/namrata/celebA/img_align_celeba
+  captions: data/celeba/captions.txt
+  word_vectors: data/celeba/celeba.vec
+  batch_size: 64
+  num_workers: 8
+
+model:
+  modes:
+    train
+
+  epochs: 600
+  optimizer:
+    Adam:
+      lr: 0.0002
+
+  network:
+    image_encoder:
+
+    text_encoder:
+
+    res_block1:
+
+    res_block2:
+
+    image_decoder:
