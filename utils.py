@@ -1,3 +1,4 @@
+import os
 import torch
 import wandb
 import random
@@ -41,6 +42,10 @@ def dict2device(x, device):
 
     return x
 
+def save_model(model, epochID, loss, outdir):
+    fname = os.path.join(outdir, "{}_{:.6f}.pth".format(epochID, loss))
+    torch.save(model.state_dict(), fname)
+
 def aggregate(losses):
     for key in losses:
         losses[key] = np.mean(losses[key])
@@ -49,7 +54,6 @@ def aggregate(losses):
 
 def wandb_log(epochID, losses, mode):
     logs = {}
-    losses = aggregate(losses)
     for key in losses.keys():
         logs.update({"{}/{}".format(mode, key): losses[key]})
 

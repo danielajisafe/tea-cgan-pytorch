@@ -6,9 +6,9 @@ from collections import defaultdict
 import torch
 import torch.nn.functional as F
 
-from utils import dict2device, log_images, wandb_log
 from model.tea_cgan import TEACGAN
 from data.dataloader import get_loader
+from utils import dict2device, log_images, wandb_log, aggregate, save_model
 
 
 class TEACGANTrainer(object):
@@ -30,6 +30,7 @@ class TEACGANTrainer(object):
         self.D = self.model.discriminator_forward
 
         self.vis_idx = np.random.randint(0, self.data_cfg.batch_size, 6)
+        self.gen_loss = np.inf
 
     def _setup_optimizer(self):
         gen_params = list(self.model.image_encoder.parameters()) + \
@@ -110,16 +111,23 @@ class TEACGANTrainer(object):
 
             tqdm_iter.set_description("{} | Epoch {} | {} | loss:{:.4f}".format(self.exp_cfg.version, epochID, mode, gen_loss.item()))
 
-            if self.exp_cfg.wandb:
-                metrics['gen_loss'].append(gen_loss.item())
-                metrics['disc_loss'].append(disc_loss.item())
+            if self.exp_cfg.wandb and i==0:
+                log_images(epochID, mode, batch['image'][self.vis_idx], g_I_T[self.vis_idx], name='reconstruction')
+                log_images(epochID, mode, batch['image'][self.vis_idx], g_I_T_hat[self.vis_idx], name='mismatch')
 
-                if i == 0:
-                    log_images(epochID, mode, batch['image'][self.vis_idx], g_I_T[self.vis_idx], name='reconstruction')
-                    log_images(epochID, mode, batch['image'][self.vis_idx], g_I_T_hat[self.vis_idx], name='mismatch')
+            metrics['gen_loss'].append(gen_loss.item())
+            metrics['disc_loss'].append(disc_loss.item())
 
+        metrics = aggregate(metrics)
         if self.exp_cfg.wandb:
             wandb_log(epochID, metrics, mode)
+
+        if metrics['gen_loss'] < self.gen_loss:
+            self.gen_loss = metrics['gen_loss']
+            save_model(self.model.eval(), epochID, self.gen_loss, self.exp_cfg.output_loc)
+        elif epochID % 5 == 0:
+            save_model(self.model.eval(), epochID, metrics['gen_loss'], self.exp_cfg.output_loc)
+
 
     def train(self):
         for epochID in range(self.model_cfg.epochs):
