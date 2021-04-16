@@ -1,7 +1,9 @@
+import os
 import torch
 import wandb
 import random
 import numpy as np
+import torchvision.utils as vutils
 
 
 def seed_everything(seed=0, harsh=False):
@@ -39,3 +41,33 @@ def dict2device(x, device):
             x[key] = x[key].to(device)
 
     return x
+
+def save_model(model, epochID, loss, outdir):
+    fname = os.path.join(outdir, "{}_{:.6f}.pth".format(epochID, loss))
+    torch.save(model.state_dict(), fname)
+
+def aggregate(losses):
+    for key in losses:
+        losses[key] = np.mean(losses[key])
+
+    return losses
+
+def wandb_log(epochID, losses, mode):
+    logs = {}
+    for key in losses.keys():
+        logs.update({"{}/{}".format(mode, key): losses[key]})
+
+    wandb.log(logs, step=epochID)
+
+def log_images(epochID:int, mode:str, x, x_hat, name='reconstruction'):
+    x = (x.detach().cpu().numpy() * 0.5) + 0.5
+    x_hat = (x_hat.detach().cpu().numpy() * 0.5) + 0.5
+    grid = np.zeros((12, x.shape[1], x.shape[2], x.shape[3]))
+
+    for i in range(grid.shape[0]//2):
+        grid[i] = x[i]
+        grid[i+6] = x_hat[i]
+
+    grid = vutils.make_grid(torch.from_numpy(grid), nrow=6, normalize=True, scale_each=True)
+
+    wandb.log({"{}_{}".format(mode, name): wandb.Image(grid)}, step=epochID)
