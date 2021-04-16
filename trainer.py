@@ -84,8 +84,8 @@ class TEACGANTrainer(object):
             g_I_T_hat, T_hat = self.model(batch['image'], batch['mismatch'])
 
             gen_loss = 0
-            gen_loss += F.mse_loss(self.D(g_I_T), ones)
-            gen_loss += F.mse_loss(self.D(g_I_T_hat, T_hat)[0], ones)
+            gen_loss += F.mse_loss(self.D(batch['image']), zeros)
+            gen_loss += F.mse_loss(self.D(g_I_T_hat, T_hat)[0], zeros)
             gen_loss += self.model_cfg.gamma2 * F.l1_loss(g_I_T, batch['image']) #recon_loss
 
             disc_loss = 0

@@ -1,5 +1,5 @@
 experiment:
-  description: tea-cgan on celeba (gen maximizes D(G(I,T)) and D(G(I, T'), T'))
+  description: tea-cgan on celeba (gen minimizes D(I) and D(G(I, T'), T'), same as paper)
   output_loc: /data/namrata/models/tea-cgan/
 
 data:
